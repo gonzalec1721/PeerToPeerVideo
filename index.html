@@ -5,8 +5,10 @@
 
 		<style type="text/css">
 			video {
+				display: inline-block;
 				width: 320px;
 			}
+
 		</style>
 
 	</head>
@@ -14,6 +16,9 @@
 	<body>
 
 		<video id="localVideo" autoplay playsinline></video>
+
+		<video id='screen' autoplay></video>
+
 		<video id="remoteVideo" autoplay playsinline></video>
 
 		<div>
@@ -25,7 +30,7 @@
 			</p>
 			<p>
 				if you are the remote, paste the hosts offer and accept it:
-				<input type="text" id="remoteOffer" placeholder="remote offer"//><button id="acceptOffer">accept</button><br/>
+				<input type="text" id="remoteOffer" placeholder="remote offer"/><button id="acceptOffer">accept</button><br/>
 				Then copy your answer and send it to the host:
 				<input type="text" id="localAnswer" placeholder="local answer"/>
 			</p>
@@ -34,13 +39,18 @@
 		<script type="text/javascript">
 			'use strict';
 
-			const mediaStreamConstraints = {video: true};
+			//added audio//
+			const mediaStreamConstraints = {video: true, audio: true};
+
 			const offerOptions = {offerToReceiveVideo:1};
 			const servers = {'iceServers': [{'url': 'stun:stun.l.google.com:19302'}]};
-
 			const localVideo = document.getElementById('localVideo');
-			const remoteVideo = document.getElementById('remoteVideo');
 
+			///
+			const localScreen = document.getElementById('screen');
+			///
+
+			const remoteVideo = document.getElementById('remoteVideo');
 			const localOffer = document.getElementById('localOffer');
 			const remoteOffer = document.getElementById('remoteOffer');
 			const createOffer = document.getElementById('createOffer');
@@ -60,16 +70,28 @@
 			const peerConnection = new RTCPeerConnection(servers);
 			console.log('Created peer connection');
 
+
 			peerConnection.addEventListener('icecandidate', handleConnection);
 			peerConnection.addEventListener('addstream', gotRemoteMediaStream);
-			
+
+
 			const peerMediaStream = new MediaStream();
 			peerConnection.addStream(peerMediaStream);
 
+
+		//////screen share//////////
+
+		navigator.mediaDevices.getDisplayMedia()
+		  .then((displayMedia)=>{
+			  localScreen.srcObject = displayMedia;
+		  }
+		)
+		.catch(logError)
+
 			// get the video media stream
+
 			navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
 				.then((mediaStream) => {
-				
 					localVideo.srcObject = mediaStream;
 
 					for (const track of mediaStream.getTracks())
@@ -77,34 +99,31 @@
 					}
 				)
 				.catch(logError);
-	
+
 			function handleConnection(event) {
 
 				const connection = event.target;
 				const iceCandidate = event.candidate;
-				
 				if (iceCandidate == null)
 				{
 					const description = connection.localDescription;
 					const descriptionType = description.type;
 					const descriptionString = JSON.stringify(description);
-					
 					if (descriptionType == 'offer') {
 
 						localOffer.value = descriptionString;
-						
+
 					} else {
-						
+
 						localAnswer.value = descriptionString;
 					}
 				}
 			}
-					
-			function gotRemoteMediaStream(event) {
 
+			function gotRemoteMediaStream(event) {
 				const mediaStream = event.stream;
 				remoteVideo.srcObject = mediaStream;
-				console.log('remote peer connection received remote stream')
+      	console.log('remote peer connection received remote stream')
 			}
 
 			function offerCreate() {
@@ -125,15 +144,15 @@
 			function offerAccept() {
 
 				const description = JSON.parse(remoteOffer.value);
-				
+
 				peerConnection.setRemoteDescription(description)
 					.then(() => {console.log('remote peer offer accepted');})
 					.catch(logError);
-					
+
 				peerConnection.createAnswer()
 					.then(createdAnswer)
 					.catch(logError);
-				
+
 			}
 
 			function createdAnswer(description) {
@@ -146,20 +165,19 @@
 			function answerAccept() {
 
 				const description = JSON.parse(remoteAnswer.value);
-
 				peerConnection.setRemoteDescription(description)
 					.then(() => {console.log('Local peer remote description set');})
 					.catch(logError);
-				
+
 			}
-					
-					
+
+
 			function logError(error) {
 
 				console.log(error.toString());
 			}
-		
-		
+
+
 		</script>
 
 	</body>
